@@ -3,14 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PackageAnalyzer = void 0;
 const child_process_1 = require("child_process");
 const util_1 = require("util");
+const errorAnalyzer_1 = require("./errorAnalyzer");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class PackageAnalyzer {
-    static COMMON_ERRORS = {
-        PEER_DEPENDENCY: 'peer dependency',
-        VERSION_CONFLICT: 'version conflict',
-        INCOMPATIBLE: 'incompatible',
-        DEPRECATED: 'deprecated'
-    };
+    errorAnalyzer;
+    constructor() {
+        this.errorAnalyzer = new errorAnalyzer_1.ErrorAnalyzer();
+    }
     async analyzeDependency(packageName, currentVersion) {
         try {
             // Get the latest version
@@ -26,7 +25,7 @@ class PackageAnalyzer {
             };
         }
         catch (error) {
-            const errorAnalysis = this.analyzeError(error.message, packageName, currentVersion);
+            const errorAnalysis = await this.analyzeError(error.message, packageName, currentVersion);
             return {
                 package: packageName,
                 oldVersion: currentVersion,
@@ -36,34 +35,26 @@ class PackageAnalyzer {
             };
         }
     }
-    analyzeError(errorMessage, packageName, version) {
-        const error = {
-            name: packageName,
-            version: version,
-            error: '',
-            suggestion: ''
-        };
-        if (errorMessage.toLowerCase().includes(PackageAnalyzer.COMMON_ERRORS.PEER_DEPENDENCY)) {
-            error.error = 'Peer dependency conflict detected';
-            error.suggestion = 'Check the package.json for conflicting peer dependencies and update them accordingly';
+    async analyzeError(errorMessage, packageName, version) {
+        try {
+            // Use LangChain's ErrorAnalyzer for all errors
+            const analysis = await this.errorAnalyzer.analyzeError(packageName, version, errorMessage);
+            return {
+                name: packageName,
+                version: version,
+                error: analysis.error,
+                suggestion: analysis.suggestion
+            };
         }
-        else if (errorMessage.toLowerCase().includes(PackageAnalyzer.COMMON_ERRORS.VERSION_CONFLICT)) {
-            error.error = 'Version conflict with existing dependencies';
-            error.suggestion = 'Review your package.json and update related dependencies to compatible versions';
+        catch (error) {
+            console.error("Error during analysis:", error);
+            return {
+                name: packageName,
+                version: version,
+                error: "Failed to analyze error",
+                suggestion: "Please check npm logs and try again"
+            };
         }
-        else if (errorMessage.toLowerCase().includes(PackageAnalyzer.COMMON_ERRORS.INCOMPATIBLE)) {
-            error.error = 'Package is incompatible with current project setup';
-            error.suggestion = 'Consider updating your Node.js version or check if this package supports your current environment';
-        }
-        else if (errorMessage.toLowerCase().includes(PackageAnalyzer.COMMON_ERRORS.DEPRECATED)) {
-            error.error = 'Package version is deprecated';
-            error.suggestion = 'Consider using an alternative package or check the package documentation for recommended replacements';
-        }
-        else {
-            error.error = 'Unknown error occurred during installation';
-            error.suggestion = 'Check npm logs for detailed error information and verify network connectivity';
-        }
-        return error;
     }
     async analyzeAllPackages(packageJson) {
         const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };

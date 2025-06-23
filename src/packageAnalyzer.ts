@@ -1,16 +1,16 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { PackageError, UpdateResult, PackageAnalysis } from './types';
+import { ErrorAnalyzer } from './errorAnalyzer';
 
 const execAsync = promisify(exec);
 
 export class PackageAnalyzer {
-  private static readonly COMMON_ERRORS = {
-    PEER_DEPENDENCY: 'peer dependency',
-    VERSION_CONFLICT: 'version conflict',
-    INCOMPATIBLE: 'incompatible',
-    DEPRECATED: 'deprecated'
-  };
+  private errorAnalyzer: ErrorAnalyzer;
+
+  constructor() {
+    this.errorAnalyzer = new ErrorAnalyzer();
+  }
 
   async analyzeDependency(packageName: string, currentVersion: string): Promise<UpdateResult> {
     try {
@@ -28,7 +28,7 @@ export class PackageAnalyzer {
         status: 'success'
       };
     } catch (error: any) {
-      const errorAnalysis = this.analyzeError(error.message, packageName, currentVersion);
+      const errorAnalysis = await this.analyzeError(error.message, packageName, currentVersion);
       return {
         package: packageName,
         oldVersion: currentVersion,
@@ -39,32 +39,25 @@ export class PackageAnalyzer {
     }
   }
 
-  private analyzeError(errorMessage: string, packageName: string, version: string): PackageError {
-    const error: PackageError = {
-      name: packageName,
-      version: version,
-      error: '',
-      suggestion: ''
-    };
-
-    if (errorMessage.toLowerCase().includes(PackageAnalyzer.COMMON_ERRORS.PEER_DEPENDENCY)) {
-      error.error = 'Peer dependency conflict detected';
-      error.suggestion = 'Check the package.json for conflicting peer dependencies and update them accordingly';
-    } else if (errorMessage.toLowerCase().includes(PackageAnalyzer.COMMON_ERRORS.VERSION_CONFLICT)) {
-      error.error = 'Version conflict with existing dependencies';
-      error.suggestion = 'Review your package.json and update related dependencies to compatible versions';
-    } else if (errorMessage.toLowerCase().includes(PackageAnalyzer.COMMON_ERRORS.INCOMPATIBLE)) {
-      error.error = 'Package is incompatible with current project setup';
-      error.suggestion = 'Consider updating your Node.js version or check if this package supports your current environment';
-    } else if (errorMessage.toLowerCase().includes(PackageAnalyzer.COMMON_ERRORS.DEPRECATED)) {
-      error.error = 'Package version is deprecated';
-      error.suggestion = 'Consider using an alternative package or check the package documentation for recommended replacements';
-    } else {
-      error.error = 'Unknown error occurred during installation';
-      error.suggestion = 'Check npm logs for detailed error information and verify network connectivity';
+  private async analyzeError(errorMessage: string, packageName: string, version: string): Promise<PackageError> {
+    try {
+      // Use LangChain's ErrorAnalyzer for all errors
+      const analysis = await this.errorAnalyzer.analyzeError(packageName, version, errorMessage);
+      return {
+        name: packageName,
+        version: version,
+        error: analysis.error,
+        suggestion: analysis.suggestion
+      };
+    } catch (error) {
+      console.error("Error during analysis:", error);
+      return {
+        name: packageName,
+        version: version,
+        error: "Failed to analyze error",
+        suggestion: "Please check npm logs and try again"
+      };
     }
-
-    return error;
   }
 
   async analyzeAllPackages(packageJson: any): Promise<PackageAnalysis> {

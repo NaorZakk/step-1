@@ -1,7 +1,7 @@
 {
   "name": "package-updater",
   "version": "1.0.0",
-  "description": "A tool to update and analyze npm packages",
+  "description": "A tool to update and analyze npm packages using LangChain for intelligent error analysis",
   "main": "dist/cli.js",
   "bin": {
     "package-updater": "./dist/cli.js"
@@ -9,19 +9,29 @@
   "scripts": {
     "build": "tsc",
     "start": "ts-node src/cli.ts",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "dev": "ts-node-dev --respawn src/cli.ts"
   },
   "keywords": [
     "npm",
     "package",
     "update",
-    "analyzer"
+    "analyzer",
+    "langchain",
+    "ai",
+    "error-analysis"
   ],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "langchain": "^0.0.200",
+    "@langchain/openai": "^0.0.10",
+    "dotenv": "^16.3.1"
+  },
   "devDependencies": {
-    "@types/node": "^24.0.3",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "@types/node": "^16.0.0",
+    "ts-node": "^10.0.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^4.5.0"
   }
 }
