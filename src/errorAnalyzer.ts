@@ -1,4 +1,4 @@
-import { OpenAI } from "@langchain/openai";
+import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { RunnableSequence } from "@langchain/core/runnables";
@@ -25,7 +25,7 @@ Suggestion: [Step-by-step solution to resolve the issue]
 `);
 
 export class ErrorAnalyzer {
-  private model: OpenAI;
+  private model: ChatOpenAI;
   private chain: RunnableSequence;
 
   constructor() {
@@ -33,7 +33,7 @@ export class ErrorAnalyzer {
       throw new Error('OPENAI_API_KEY environment variable is required');
     }
 
-    this.model = new OpenAI({
+    this.model = new ChatOpenAI({
       modelName: "gpt-3.5-turbo",
       temperature: 0.3,
       openAIApiKey: process.env.OPENAI_API_KEY,
