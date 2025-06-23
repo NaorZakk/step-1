@@ -1,17 +1,26 @@
 # Package Updater
 
-A command-line tool that analyzes and updates npm packages in your project, providing detailed error analysis and suggestions for failed updates.
+A command-line tool that analyzes and updates npm packages in your project, providing detailed error analysis and suggestions for failed updates using LangChain for intelligent error analysis.
 
 ## Features
 
 - Automatically updates packages to their latest versions
-- Provides detailed error analysis for failed updates
-- Suggests solutions for common package installation issues
+- Provides intelligent error analysis using LangChain:
+  - Pattern-based detection for common issues
+  - AI-powered analysis for unknown errors
+- Generates context-aware fix suggestions
 - Shows clear summary of successful and failed updates
 
 ## Installation
 
-Before installing, make sure you're using the npm official registry:
+1. Set up your OpenAI API key in .env:
+   ```bash
+   # Copy the example .env file
+   cp .env.example .env
+   # Add your OpenAI API key to .env
+   ```
+
+2. Make sure you're using the npm official registry:
 
 ```bash
 # Check current registry
@@ -79,6 +88,10 @@ Failed updates: 2
 - Dependency tree analysis
 - Custom update strategies
 - Automated testing for updates
+- Support for multiple LLM providers (Claude, GPT-4, etc.)
+- Custom error analysis prompts
+- Batch processing optimization
+- Integration with other AI frameworks (LlamaIndex, etc.)
 
 ## Troubleshooting
 
