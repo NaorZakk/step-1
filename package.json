@@ -1,0 +1,27 @@
+{
+  "name": "package-updater",
+  "version": "1.0.0",
+  "description": "A tool to update and analyze npm packages",
+  "main": "dist/cli.js",
+  "bin": {
+    "package-updater": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/cli.ts",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "npm",
+    "package",
+    "update",
+    "analyzer"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^24.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
