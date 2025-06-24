@@ -23,6 +23,8 @@ A command-line tool that analyzes, updates, and fixes npm packages in your proje
 
 ## Installation
 
+⚠️ **Security Note**: Never commit your `.env` file or API keys to version control. The `.env` file is automatically ignored via `.gitignore`.
+
 1. Set up your OpenAI API key in .env:
    ```bash
    # Copy the example .env file
@@ -123,6 +125,20 @@ BUILD_COMMAND=npm run build
 - Project-specific fix rules
 - Integration with more build tools
 - Support for monorepos
+
+## Security Best Practices
+
+1. **Environment Variables**:
+   - Always use .env for sensitive information
+   - Never commit .env files to git
+   - Use .env.example as a template
+   - Keep API keys secure and rotate them regularly
+
+2. **Git Safety**:
+   - Verify .gitignore is properly configured
+   - Check commits for sensitive information
+   - Use git-secrets or similar tools
+   - Force push with caution
 
 ## Troubleshooting
 
