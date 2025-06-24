@@ -1,15 +1,25 @@
 # Package Updater
 
-A command-line tool that analyzes and updates npm packages in your project, providing detailed error analysis and suggestions for failed updates using LangChain for intelligent error analysis.
+A command-line tool that analyzes, updates, and fixes npm packages in your project using AI-powered workflows.
 
 ## Features
 
-- Automatically updates packages to their latest versions
-- Provides intelligent error analysis using LangChain:
-  - Pattern-based detection for common issues
-  - AI-powered analysis for unknown errors
-- Generates context-aware fix suggestions
-- Shows clear summary of successful and failed updates
+- **Intelligent Package Management**:
+  - Automatically updates packages to their latest versions
+  - Handles dependency conflicts
+  - Validates builds after updates
+
+- **AI-Powered Code Fixing**:
+  - Automatically detects build failures
+  - Analyzes errors using LangChain
+  - Suggests and implements code fixes
+  - Validates fixes with multiple attempts
+
+- **Smart Workflow System**:
+  - Step-by-step package update process
+  - Automatic build verification
+  - Code fixing with validation
+  - Maximum attempt limits for stability
 
 ## Installation
 
@@ -20,24 +30,16 @@ A command-line tool that analyzes and updates npm packages in your project, prov
    # Add your OpenAI API key to .env
    ```
 
-2. Make sure you're using the npm official registry:
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-```bash
-# Check current registry
-npm config get registry
-
-# Set to npm official registry if needed
-npm config set registry https://registry.npmjs.org/
-
-# Install globally
-npm install -g .
-
-# Or run directly with npx
-npx package-updater
-
-# Restore your original registry if needed
-npm config set registry <your-registry-url>
-```
+3. Build and install globally:
+   ```bash
+   npm run build
+   npm install -g .
+   ```
 
 ## Usage
 
@@ -49,11 +51,13 @@ package-updater
 
 The tool will:
 1. Analyze your package.json
-2. Attempt to update each package to its latest version
-3. Provide a detailed report of:
-   - Successfully updated packages
-   - Failed updates with error analysis
-   - Suggestions for resolving issues
+2. Update each package to its latest version
+3. Run the project's build command
+4. If build fails:
+   - Analyze the error using AI
+   - Attempt to fix the code
+   - Validate the fixes
+   - Retry if needed
 
 ## Example Output
 
@@ -73,45 +77,69 @@ Failed updates: 2
 
 ❌ Failed updates:
   Package: react (17.0.2)
-  Error: Peer dependency conflict detected
-  Suggestion: Check the package.json for conflicting peer dependencies and update them accordingly
+  Error: Build failed after update
+  Files Fixed: src/components/App.jsx
+  Suggestion: Check the updated code in fixed files
 
   Package: typescript (4.5.4)
-  Error: Version conflict with existing dependencies
-  Suggestion: Review your package.json and update related dependencies to compatible versions
+  Error: Incompatible types after update
+  Files Fixed: src/types/index.ts, src/utils/helpers.ts
+  Suggestion: Review type changes in fixed files
 ```
+
+## Configuration
+
+You can customize the behavior through environment variables:
+
+```env
+OPENAI_API_KEY=your-api-key
+MAX_FIX_ATTEMPTS=3
+BUILD_COMMAND=npm run build
+```
+
+## How It Works
+
+1. **Package Installation**:
+   - Detects outdated packages
+   - Updates to latest versions
+   - Handles dependency resolution
+
+2. **Build Verification**:
+   - Runs project build command
+   - Captures build errors
+   - Initiates fix workflow if needed
+
+3. **Code Fixing**:
+   - Analyzes build errors with AI
+   - Generates targeted fixes
+   - Validates changes
+   - Retries with different approaches
 
 ## Future Enhancements
 
-- Automatic code fixing capabilities
-- Interactive update mode
-- Dependency tree analysis
-- Custom update strategies
-- Automated testing for updates
-- Support for multiple LLM providers (Claude, GPT-4, etc.)
-- Custom error analysis prompts
-- Batch processing optimization
-- Integration with other AI frameworks (LlamaIndex, etc.)
+- Interactive fix approval mode
+- Custom fix strategies
+- Extended error analysis
+- Project-specific fix rules
+- Integration with more build tools
+- Support for monorepos
 
 ## Troubleshooting
 
-### Registry Issues
+### Common Issues
 
-If you encounter npm registry errors (404 Not Found), it might be because you're using a custom registry. Try:
-
-1. Temporarily switch to the npm official registry:
-   ```bash
-   npm config set registry https://registry.npmjs.org/
-   ```
-
-2. Install the package
-3. Switch back to your original registry if needed
-
-### Other Common Issues
-
-- If you get permission errors during global installation, try using `sudo npm install -g .` (on Unix-based systems)
+- If you get permission errors during global installation, try using `sudo npm install -g .`
 - Make sure you have Node.js version 14 or higher installed
-- If TypeScript compilation fails, try removing the `dist` directory and rebuilding
+- Verify that your OpenAI API key is correctly set in .env
+- Check that your project has a valid build command
+
+### Build Failures
+
+If the automatic fixing doesn't resolve build issues:
+1. Check the generated fixes in the modified files
+2. Review the build error messages
+3. Adjust the MAX_FIX_ATTEMPTS if needed
+4. Consider manual intervention for complex issues
 
 ## Contributing
 

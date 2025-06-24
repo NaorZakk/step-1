@@ -1,68 +1,55 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PackageAnalyzer = void 0;
-const child_process_1 = require("child_process");
-const util_1 = require("util");
-const errorAnalyzer_1 = require("./errorAnalyzer");
-const execAsync = (0, util_1.promisify)(child_process_1.exec);
+const manager_1 = require("./workflow/manager");
 class PackageAnalyzer {
-    errorAnalyzer;
-    constructor() {
-        this.errorAnalyzer = new errorAnalyzer_1.ErrorAnalyzer();
+    workflowManager;
+    constructor(buildCommand = 'npm run build') {
+        this.workflowManager = new manager_1.UpdateWorkflowManager({
+            maxFixAttempts: 3,
+            buildCommand,
+            projectRoot: process.cwd()
+        });
     }
-    async analyzeDependency(packageName, currentVersion) {
-        try {
-            // Get the latest version
-            const { stdout: latestVersion } = await execAsync(`npm view ${packageName} version`);
-            const trimmedVersion = latestVersion.trim();
-            // Attempt to install the latest version
-            await execAsync(`npm install ${packageName}@latest`);
+    workflowStateToUpdateResult(state) {
+        if (state.status === 'completed') {
             return {
-                package: packageName,
-                oldVersion: currentVersion,
-                newVersion: trimmedVersion,
+                package: state.packageName,
+                oldVersion: state.currentVersion,
+                newVersion: state.targetVersion,
                 status: 'success'
             };
         }
-        catch (error) {
-            const errorAnalysis = await this.analyzeError(error.message, packageName, currentVersion);
+        else {
+            const error = {
+                name: state.packageName,
+                version: state.currentVersion,
+                error: state.installError || state.buildError || 'Unknown error occurred',
+                suggestion: state.fixedFiles.length > 0
+                    ? `Build failed after fixing files: ${state.fixedFiles.join(', ')}`
+                    : 'Unable to fix build issues automatically'
+            };
             return {
-                package: packageName,
-                oldVersion: currentVersion,
+                package: state.packageName,
+                oldVersion: state.currentVersion,
                 newVersion: 'failed',
                 status: 'error',
-                error: errorAnalysis
+                error
             };
         }
     }
-    async analyzeError(errorMessage, packageName, version) {
-        try {
-            // Use LangChain's ErrorAnalyzer for all errors
-            const analysis = await this.errorAnalyzer.analyzeError(packageName, version, errorMessage);
-            return {
-                name: packageName,
-                version: version,
-                error: analysis.error,
-                suggestion: analysis.suggestion
-            };
-        }
-        catch (error) {
-            console.error("Error during analysis:", error);
-            return {
-                name: packageName,
-                version: version,
-                error: "Failed to analyze error",
-                suggestion: "Please check npm logs and try again"
-            };
-        }
+    async analyzeDependency(packageName, currentVersion) {
+        const state = await this.workflowManager.runWorkflow(packageName, currentVersion);
+        return this.workflowStateToUpdateResult(state);
     }
     async analyzeAllPackages(packageJson) {
         const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
-        const results = [];
-        for (const [name, version] of Object.entries(dependencies)) {
-            const result = await this.analyzeDependency(name, version);
-            results.push(result);
-        }
+        const packages = Object.entries(dependencies).map(([name, version]) => ({
+            name,
+            version: version
+        }));
+        const states = await this.workflowManager.runBatch(packages);
+        const results = states.map(state => this.workflowStateToUpdateResult(state));
         const successful = results.filter(r => r.status === 'success');
         const failed = results.filter(r => r.status === 'error').map(r => r.error);
         return {

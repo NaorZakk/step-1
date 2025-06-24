@@ -1,73 +1,60 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { UpdateWorkflowManager } from './workflow/manager';
 import { PackageError, UpdateResult, PackageAnalysis } from './types';
-import { ErrorAnalyzer } from './errorAnalyzer';
-
-const execAsync = promisify(exec);
+import { WorkflowState } from './workflow/types';
 
 export class PackageAnalyzer {
-  private errorAnalyzer: ErrorAnalyzer;
+  private workflowManager: UpdateWorkflowManager;
 
-  constructor() {
-    this.errorAnalyzer = new ErrorAnalyzer();
+  constructor(buildCommand: string = 'npm run build') {
+    this.workflowManager = new UpdateWorkflowManager({
+      maxFixAttempts: 3,
+      buildCommand,
+      projectRoot: process.cwd()
+    });
+  }
+
+  private workflowStateToUpdateResult(state: WorkflowState): UpdateResult {
+    if (state.status === 'completed') {
+      return {
+        package: state.packageName,
+        oldVersion: state.currentVersion,
+        newVersion: state.targetVersion,
+        status: 'success'
+      };
+    } else {
+      const error: PackageError = {
+        name: state.packageName,
+        version: state.currentVersion,
+        error: state.installError || state.buildError || 'Unknown error occurred',
+        suggestion: state.fixedFiles.length > 0
+          ? `Build failed after fixing files: ${state.fixedFiles.join(', ')}`
+          : 'Unable to fix build issues automatically'
+      };
+
+      return {
+        package: state.packageName,
+        oldVersion: state.currentVersion,
+        newVersion: 'failed',
+        status: 'error',
+        error
+      };
+    }
   }
 
   async analyzeDependency(packageName: string, currentVersion: string): Promise<UpdateResult> {
-    try {
-      // Get the latest version
-      const { stdout: latestVersion } = await execAsync(`npm view ${packageName} version`);
-      const trimmedVersion = latestVersion.trim();
-
-      // Attempt to install the latest version
-      await execAsync(`npm install ${packageName}@latest`);
-
-      return {
-        package: packageName,
-        oldVersion: currentVersion,
-        newVersion: trimmedVersion,
-        status: 'success'
-      };
-    } catch (error: any) {
-      const errorAnalysis = await this.analyzeError(error.message, packageName, currentVersion);
-      return {
-        package: packageName,
-        oldVersion: currentVersion,
-        newVersion: 'failed',
-        status: 'error',
-        error: errorAnalysis
-      };
-    }
-  }
-
-  private async analyzeError(errorMessage: string, packageName: string, version: string): Promise<PackageError> {
-    try {
-      // Use LangChain's ErrorAnalyzer for all errors
-      const analysis = await this.errorAnalyzer.analyzeError(packageName, version, errorMessage);
-      return {
-        name: packageName,
-        version: version,
-        error: analysis.error,
-        suggestion: analysis.suggestion
-      };
-    } catch (error) {
-      console.error("Error during analysis:", error);
-      return {
-        name: packageName,
-        version: version,
-        error: "Failed to analyze error",
-        suggestion: "Please check npm logs and try again"
-      };
-    }
+    const state = await this.workflowManager.runWorkflow(packageName, currentVersion);
+    return this.workflowStateToUpdateResult(state);
   }
 
   async analyzeAllPackages(packageJson: any): Promise<PackageAnalysis> {
     const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
-    const results: UpdateResult[] = [];
+    const packages = Object.entries(dependencies).map(([name, version]) => ({
+      name,
+      version: version as string
+    }));
 
-    for (const [name, version] of Object.entries(dependencies)) {
-      const result = await this.analyzeDependency(name, version as string);
-      results.push(result);
-    }
+    const states = await this.workflowManager.runBatch(packages);
+    const results = states.map(state => this.workflowStateToUpdateResult(state));
 
     const successful = results.filter(r => r.status === 'success');
     const failed = results.filter(r => r.status === 'error').map(r => r.error!) as PackageError[];
